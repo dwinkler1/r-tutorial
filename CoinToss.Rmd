@@ -1,0 +1,77 @@
+---
+title: "Notes on Probability Distributions"
+author: "DW & PK"
+date: "February 13, 2018"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Random Variables
+  
+
+```{r toss, echo=FALSE}
+fluidPage(
+  fluidRow(
+  column(width = 6, sliderInput("n_toss", label = "Number of Coins:",
+              min = 1, max = 20,value = 10, step = 1)),
+  column(width = 4, numericInput("p_head", min = 0, max = 1, step = 0.05, value = 0.5, label = "P(X=h)"))),
+  fluidRow(
+      column(width = 12,tableOutput("coin_tab"))),
+  fluidRow(
+    column(width = 3, actionButton("retoss", label = "Toss Again!"))),
+  fluidRow(
+    column(12, plotOutput("coin_cdf")),
+    column(12, plotOutput("coin_pdf"))
+  )
+  )
+    
+coin_tab <- reactive({
+  input$retoss
+  mat <- matrix(
+  c(1:input$n_toss, 
+    sample(c("h", "t"),size = input$n_toss, replace = TRUE,prob = c(input$p_head, 1-input$p_head))),
+  byrow = TRUE,
+  ncol  = input$n_toss)
+  rownames(mat) <- c("Coin", "Result")
+  mat})
+
+output$coin_tab <- renderTable({coin_tab()}, colnames = FALSE, rownames = TRUE)
+```
+
+```{r cdf, echo = FALSE}
+library(ggplot2)
+# coin_cdf <- reactive({
+#   x <- rbinom(1e5, input$n_toss, input$p_head)
+#   ggplot(data.frame(x), aes(x)) +
+#      stat_ecdf()+
+#      xlim(0, input$n_toss) +
+#      ggtitle("Cumulative distribution function") +
+#     labs(x = "# of h", y = "Cummulative Probability")
+#     })
+# renderPlot({coin_cdf()})
+
+coin_cdf_alt <- reactive({
+  y <- rbinom(1e5, input$n_toss, input$p_head)
+  plot(NULL, xlim=c(min(y), max(y)), ylim = c(0,1), 
+       ylab = "Cumulative Probability", xlab = "# of h", xaxt = "n")
+  axis(1, at = 0:input$n_toss)
+  grid(NULL, NULL, lwd = 1, lty = 'solid', col = "gray93", equilogs = FALSE)
+  lines(ecdf(y))
+  })
+output$coin_cdf <- renderPlot({coin_cdf_alt()})
+
+coin_pdf <- reactive({
+  y <- dbinom(x = 0:input$n_toss,size =  input$n_toss, input$p_head)
+  ggplot(data.frame(y, x =  seq(0,input$n_toss, length.out = length(y))), aes(x = x, y = y)) +
+    geom_point() +
+    labs(x = "# of h", y = "probability mass")+
+    scale_x_continuous(breaks = 0:input$n_toss)
+})
+output$coin_pdf <- renderPlot({coin_pdf()})
+
+```
+
